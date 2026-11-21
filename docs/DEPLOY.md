@@ -3,21 +3,29 @@
 ## Estructura en el servidor
 
 ```
-/home/Startup/
-├── servidor-de-correo/   # este repo (solo configs, sin secretos)
-└── runtime/
-    ├── mailserver/       # compose real + data/ + .env (gitignore)
-    ├── nginx-proxy/      # conf.d/ + letsencrypt/ + certbot/ + logs/
-    └── cloudflare-ddns/  # docker-compose.yml + .env (gitignore)
+/home/Startup/servidor-de-correo/   # este repo: configs + datos reales ignorados
+├── mailserver/       # compose real + .env + data/ (ignorados)
+├── nginx-proxy/      # conf.d/ + certbot/ + letsencrypt/ + logs/ (ignorados salvo conf.d)
+└── cloudflare-ddns/  # docker-compose.yml + .env (ignorado)
 ```
+
+No hay directorio `runtime`: todo se ejecuta desde la raíz del repo.
 
 ## 1. Preparar secretos
 
 ```bash
-cp .env.example /ruta/segura/mailserver.env   # completar passwords
-python3 mailserver/scripts/render.py mailserver/config/mysql-init/init.sql.example /home/Startup/runtime/mailserver/config/mysql-init/init.sql
-cp mailserver/config/postfix/postfix-accounts.cf.example /tmp/accounts.example
-# El archivo real se genera con: docker exec -it mailserver setup email add usuario@laborin.app
+cd /home/Startup/servidor-de-correo
+
+cp .env.example mailserver/.env
+cp cloudflare-ddns/.env.example cloudflare-ddns/.env
+# completar passwords y CLOUDFLARE_API_TOKEN en esos .env
+
+python3 mailserver/scripts/render.py \
+  mailserver/config/mysql-init/init.sql.example \
+  mailserver/config/mysql-init/init.sql
+
+# El archivo real se genera en el servidor; NUNCA se commitea:
+docker exec -it mailserver setup email add usuario@laborin.app
 ```
 
 La red externa `proxy` debe existir: `docker network create proxy`.
@@ -25,29 +33,38 @@ La red externa `proxy` debe existir: `docker network create proxy`.
 ## 2. Levantar
 
 ```bash
-docker compose --project-directory /home/Startup/runtime/mailserver \
-  -f /home/Startup/runtime/mailserver/docker-compose.yml up -d
-docker compose --project-directory /home/Startup/runtime/nginx-proxy \
-  -f /home/Startup/runtime/nginx-proxy/docker-compose.yml up -d
-docker compose --project-directory /home/Startup/runtime/cloudflare-ddns \
-  -f /home/Startup/runtime/cloudflare-ddns/docker-compose.yml up -d
+cd /home/Startup/servidor-de-correo
+
+docker compose --project-directory mailserver -f mailserver/docker-compose.yml up -d
+docker compose --project-directory nginx-proxy -f nginx-proxy/docker-compose.yml up -d
+docker compose --project-directory cloudflare-ddns -f cloudflare-ddns/docker-compose.yml up -d
 ```
 
 Verificar: `docker exec mailserver setup email list` y `docker ps`.
 
 ## 3. Certificados
 
-Los certificados de `laborin.app` están en `/etc/letsencrypt` (root). El de `laborin-webmail.laborin.app` se emite en un directorio propiedad del usuario:
+Los certificados de `laborin.app` están en `/etc/letsencrypt` y los administra el `certbot.timer` del host (root). El de `laborin-webmail.laborin.app` vive en `nginx-proxy/letsencrypt` y lo administra este repo.
+
+Emisión inicial (solo si hay que recrearlo):
 
 ```bash
+cd /home/Startup/servidor-de-correo/nginx-proxy
+
 docker run --rm \
-  -v /home/Startup/runtime/nginx-proxy/certbot/www:/var/www/certbot \
-  -v /home/Startup/runtime/nginx-proxy/letsencrypt:/etc/letsencrypt \
+  -v ./certbot/www:/var/www/certbot \
+  -v ./letsencrypt:/etc/letsencrypt \
   certbot/certbot:latest certonly --webroot -w /var/www/certbot \
   -d laborin-webmail.laborin.app --agree-tos --register-unsafely-without-email
 ```
 
-El compose de nginx lo monta como `/etc/letsencrypt-new`. Renovar con el mismo comando; luego `docker exec nginx-proxy nginx -s reload`.
+Renovación (desde la raíz del repo):
+
+```bash
+./scripts/renew-webmail-cert.sh
+```
+
+El compose de nginx monta `./letsencrypt` como `/etc/letsencrypt-new`. El script renueva con el mismo volumen y recarga nginx al finalizar.
 
 ## 4. DNS
 
@@ -56,7 +73,12 @@ El compose de nginx lo monta como `/etc/letsencrypt-new`. Renovar con el mismo c
 ## 5. Seguridad antes de commitear
 
 ```bash
-git check-ignore -v /home/Startup/runtime/mailserver/.env \
-  /home/Startup/runtime/mailserver/data /home/Startup/runtime/nginx-proxy/letsencrypt
+cd /home/Startup/servidor-de-correo
+
+git check-ignore -v mailserver/.env mailserver/data \
+  mailserver/comandos mailserver/config/postfix/postfix-accounts.cf \
+  mailserver/config/mysql-init/init.sql nginx-proxy/letsencrypt \
+  nginx-proxy/certbot nginx-proxy/logs cloudflare-ddns/.env
+
 git grep -nIE '(PASSWORD=|TOKEN=|SECRET=|\$6\$|PRIVATE KEY)' -- ':!*.example'
 ```

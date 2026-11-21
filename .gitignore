@@ -15,3 +15,4 @@ logs/
 # Generados en el servidor a partir de los templates (contienen secretos)
 mailserver/config/postfix/postfix-accounts.cf
 mailserver/config/mysql-init/init.sql
+mailserver/comandos
