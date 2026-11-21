@@ -1,0 +1,14 @@
+Crear usuario (la contraseña nunca va al repo):
+docker exec -it mailserver setup email add usuario@laborin.app
+
+También se puede pasar por parámetro, reemplazando CAMBIAR_PASSWORD_SEGURA:
+docker exec -i mailserver setup email add usuario@laborin.app 'CAMBIAR_PASSWORD_SEGURA'
+
+Verificar:
+docker exec mailserver setup email list
+
+Borrar:
+docker exec -it mailserver setup email del usuario@laborin.app
+
+Cambiar contraseña:
+docker exec -it mailserver setup email update usuario@laborin.app

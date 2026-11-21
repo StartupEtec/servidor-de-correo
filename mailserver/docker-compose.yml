@@ -1,0 +1,79 @@
+services:
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mx
+    domainname: ${DOMAIN_NAME}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+      - "995:995"
+    volumes:
+      - ./data/maildir:/var/mail
+      - ./data/mailstate:/var/mail-state
+      - ./config/postfix:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    environment:
+      - ENABLE_SPAMASSASSIN=1
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=1
+      - ONE_DIR=1
+      - DMS_TELEMETRY=0
+      - SSL_TYPE=manual
+      - SSL_CERT_PATH=/etc/letsencrypt/live/laborin.app/fullchain.pem
+      - SSL_KEY_PATH=/etc/letsencrypt/live/laborin.app/privkey.pem
+      - POSTMASTER_ADDRESS=thiago@laborin.app
+      - RELAY_HOST=${RELAY_HOST}
+      - RELAY_PORT=${RELAY_PORT}
+      - RELAY_USER=${RELAY_USER}
+      - RELAY_PASSWORD=${RELAY_PASSWORD}
+    networks:
+      default:
+        aliases:
+          - mx.laborin.app
+      proxy:
+    restart: always
+
+  webmail-db:
+    image: mariadb:10.11
+    container_name: webmail-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASS}
+      - MYSQL_DATABASE=${MYSQL_DB}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASS}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./config/mysql-init:/docker-entrypoint-initdb.d:ro
+    restart: always
+
+  webmail:
+    image: roundcube/roundcubemail:latest
+    container_name: webmail
+    expose:
+      - "80"
+    environment:
+      - ROUNDCUBEMAIL_DB_TYPE=mysql
+      - ROUNDCUBEMAIL_DB_HOST=webmail-db
+      - ROUNDCUBEMAIL_DB_USER=${MYSQL_USER}
+      - ROUNDCUBEMAIL_DB_PASSWORD=${MYSQL_PASS}
+      - ROUNDCUBEMAIL_DB_NAME=${MYSQL_DB}
+      - ROUNDCUBEMAIL_DEFAULT_HOST=ssl://mx.laborin.app
+      - ROUNDCUBEMAIL_DEFAULT_PORT=993
+      - ROUNDCUBEMAIL_SMTP_SERVER=tls://mx.laborin.app
+      - ROUNDCUBEMAIL_SMTP_PORT=587
+      - ROUNDCUBEMAIL_REQUEST_PATH=/
+    depends_on:
+      - webmail-db
+      - mailserver
+    networks:
+      - default
+      - proxy
+    restart: always
+
+networks:
+  proxy:
+    external: true

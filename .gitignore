@@ -1,0 +1,17 @@
+# Datos reales y secretos - NUNCA versionar
+data/
+**/data/
+.env
+.env.*
+!.env.example
+*.bak*
+*.key
+*.pem
+*.crt
+letsencrypt/
+certbot/
+logs/
+
+# Generados en el servidor a partir de los templates (contienen secretos)
+mailserver/config/postfix/postfix-accounts.cf
+mailserver/config/mysql-init/init.sql

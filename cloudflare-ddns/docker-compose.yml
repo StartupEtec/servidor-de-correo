@@ -1,0 +1,10 @@
+services:
+  cloudflare-ddns:
+    image: favonia/cloudflare-ddns:1.18.0
+    container_name: cloudflare-ddns
+    env_file: .env
+    network_mode: host
+    restart: always
+    read_only: true
+    cap_drop: [all]
+    security_opt: [no-new-privileges:true]
