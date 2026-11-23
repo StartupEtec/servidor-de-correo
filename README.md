@@ -10,6 +10,7 @@ Configuración y datos operativos del servidor de correo de `laborin.app`. Todo 
 ├── .gitignore
 ├── README.md
 ├── docs/
+├── landing/              # estático de laborin.app (ignorado)
 ├── scripts/                  # renovación del certificado del webmail
 ├── mailserver/
 │   ├── .env                  # real, ignorado
@@ -46,7 +47,7 @@ docker compose --project-directory cloudflare-ddns -f cloudflare-ddns/docker-com
 ## URLs
 
 - Webmail: `https://laborin-webmail.laborin.app/`
-- `https://laborin.app/` queda libre para la landing.
+- Landing: `https://laborin.app/` (estático en `landing/`, montado como `/var/www/landing`).
 - `https://laborin.app/webmail/` redirige al webmail por compatibilidad.
 
 ## Seguridad

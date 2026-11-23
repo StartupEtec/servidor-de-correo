@@ -4,6 +4,7 @@
 
 ```
 /home/Startup/servidor-de-correo/   # este repo: configs + datos reales ignorados
+├── landing/          # estático de laborin.app (ignorado)
 ├── mailserver/       # compose real + .env + data/ (ignorados)
 ├── nginx-proxy/      # conf.d/ + certbot/ + letsencrypt/ + logs/ (ignorados salvo conf.d)
 └── cloudflare-ddns/  # docker-compose.yml + .env (ignorado)
@@ -70,7 +71,18 @@ El compose de nginx monta `./letsencrypt` como `/etc/letsencrypt-new`. El script
 
 `DOMAINS` en `cloudflare-ddns/.env` incluye `laborin.app`, `www`, `mx` y `laborin-webmail.laborin.app`. `PROXIED=!is(mx.laborin.app)` deja `mx` sin proxy (SMTP directo) y el resto detrás de Cloudflare.
 
-## 5. Seguridad antes de commitear
+## 5. Landing
+
+El export de `Landing/out/` se publica en `landing/` (ignorado por git). El compose de nginx monta `../landing` como `/var/www/landing:ro` y `conf.d/laborin.conf` sirve el estático con `try_files`.
+
+Verificar después de publicar:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' 'https://laborin.app/'
+curl -sS 'https://laborin.app/' | grep -o '<title>[^<]*'
+```
+
+## 6. Seguridad antes de commitear
 
 ```bash
 cd /home/Startup/servidor-de-correo
