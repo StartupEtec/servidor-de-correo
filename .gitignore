@@ -18,3 +18,4 @@ mailserver/config/mysql-init/init.sql
 mailserver/comandos
 
 landing/
+nginx-proxy/conf.d/*.include

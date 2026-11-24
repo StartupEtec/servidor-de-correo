@@ -1,0 +1,23 @@
+services:
+  bot:
+    build:
+      context: /home/Startup/Bot
+      dockerfile: Dockerfile
+    container_name: laborin_bot
+    restart: unless-stopped
+    env_file:
+      - /home/Startup/Bot/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 3001) + '/health').then((r) => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  proxy:
+    external: true
